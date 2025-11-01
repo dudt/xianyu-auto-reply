@@ -3020,8 +3020,8 @@ class XianyuLive:
             if secret:
                 string_to_sign = f'{timestamp}\n{secret}'
                 hmac_code = hmac.new(
-                    secret.encode('utf-8'),
                     string_to_sign.encode('utf-8'),
+                    ''.encode('utf-8'),
                     digestmod=hashlib.sha256
                 ).digest()
                 sign = base64.b64encode(hmac_code).decode('utf-8')
@@ -4339,7 +4339,7 @@ class XianyuLive:
         text = {
             "contentType": 1,
             "text": {
-                "text": text + "\n\n\n购买后如果没有发货，可尝试点击提醒发货按钮"
+                "text": text
             }
         }
         text_base64 = str(base64.b64encode(json.dumps(text).encode('utf-8')), 'utf-8')
