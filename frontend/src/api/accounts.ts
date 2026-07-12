@@ -42,6 +42,7 @@ export interface AccountFilterParams {
   online?: boolean | null                // 在线状态（true=在线/false=离线）
   disable_reason?: string | null         // 禁用原因关键词（模糊搜索）
   account_id?: string | null             // 账号ID关键词（模糊搜索）
+  owner_username?: string | null         // 所属用户名关键词（模糊搜索，管理员用）
 }
 
 // 获取账号详情列表（分页）
@@ -115,6 +116,10 @@ export const getAccountDetailsPaginated = async (
     // 账号ID：模糊搜索关键词，去除前后空白后再判断是否传参，避免发送空字符串
     if (filters.account_id && filters.account_id.trim()) {
       params.append('account_id', filters.account_id.trim())
+    }
+    // 所属用户名：模糊搜索关键词，去除前后空白后再判断是否传参，避免发送空字符串
+    if (filters.owner_username && filters.owner_username.trim()) {
+      params.append('owner_username', filters.owner_username.trim())
     }
   }
   

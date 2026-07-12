@@ -42,6 +42,7 @@ interface AccountFilters {
   online: boolean | null
   disable_reason: string | null
   account_id: string | null
+  owner_username: string | null
 }
 
 interface AIConfigSnapshot {
@@ -99,12 +100,15 @@ export function Accounts() {
     online: null,
     disable_reason: null,
     account_id: null,
+    owner_username: null,
   })
   const [showFilters, setShowFilters] = useState(false)
   // 「禁用原因」筛选输入框的本地草稿：输入过程不触发接口，回车/失焦/点击查询按钮时提交
   const [disableReasonInput, setDisableReasonInput] = useState('')
   // 「账号ID」筛选输入框的本地草稿：输入过程不触发接口，回车/失焦/点击查询按钮时提交
   const [accountIdInput, setAccountIdInput] = useState('')
+  // 「所属用户」筛选输入框的本地草稿（仅管理员使用）：输入过程不触发接口，回车/失焦/点击查询按钮时提交
+  const [ownerUsernameInput, setOwnerUsernameInput] = useState('')
   
   // 更多操作下拉菜单状态
   const [moreMenuAccountId, setMoreMenuAccountId] = useState<string | null>(null)
@@ -276,7 +280,10 @@ export function Accounts() {
       if (currentFilters.account_id && currentFilters.account_id.trim()) {
         filterParams.account_id = currentFilters.account_id.trim()
       }
-      
+      if (currentFilters.owner_username && currentFilters.owner_username.trim()) {
+        filterParams.owner_username = currentFilters.owner_username.trim()
+      }
+
       const result = await getAccountDetailsPaginated(page, pageSize, filterParams)
 
       setAccounts(result.data)
@@ -330,10 +337,12 @@ export function Accounts() {
       online: null,
       disable_reason: null,
       account_id: null,
+      owner_username: null,
     }
     setFilters(emptyFilters)
     setDisableReasonInput('')
     setAccountIdInput('')
+    setOwnerUsernameInput('')
     loadAccounts(1, pagination.pageSize, emptyFilters)
   }
 
@@ -355,16 +364,27 @@ export function Accounts() {
     handleFilterChange('account_id', keyword || null)
   }
 
+  // 提交「所属用户」筛选（回车或失焦时调用，仅管理员）
+  const handleOwnerUsernameSubmit = () => {
+    const keyword = ownerUsernameInput.trim()
+    const currentValue = filters.owner_username || ''
+    // 关键词未变化则跳过，避免重复请求
+    if (keyword === currentValue) return
+    handleFilterChange('owner_username', keyword || null)
+  }
+
   // 统一「查询」按钮：合并当前所有筛选条件后回到第 1 页重新查询
   // - 下拉类筛选（状态、AI 回复等）变更时只暂存到 filters，这里通过展开 filters 一并带上其当前值
   // - 文本类筛选（账号ID、禁用原因）以当前草稿输入为准，强制覆盖 filters 中的旧值
   const handleSearch = () => {
     const accountIdKeyword = accountIdInput.trim()
     const disableReasonKeyword = disableReasonInput.trim()
+    const ownerUsernameKeyword = ownerUsernameInput.trim()
     const mergedFilters: AccountFilters = {
       ...filters,
       account_id: accountIdKeyword || null,
       disable_reason: disableReasonKeyword || null,
+      owner_username: ownerUsernameKeyword || null,
     }
     setFilters(mergedFilters)
     loadAccounts(1, pagination.pageSize, mergedFilters)
@@ -2194,6 +2214,28 @@ export function Accounts() {
                 />
               </div>
 
+              {/* 所属用户筛选（模糊搜索，仅管理员可见；回车/失焦/查询按钮均会提交） */}
+              {isAdmin && (
+              <div className="flex flex-col gap-1 col-span-2">
+                <label className="text-xs text-gray-500 dark:text-gray-400">所属用户</label>
+                <input
+                  type="text"
+                  value={ownerUsernameInput}
+                  maxLength={255}
+                  onChange={(e) => setOwnerUsernameInput(e.target.value)}
+                  onBlur={handleOwnerUsernameSubmit}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault()
+                      handleOwnerUsernameSubmit()
+                    }
+                  }}
+                  placeholder="输入用户名关键字模糊搜索"
+                  className="px-2 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              )}
+
               {/* 禁用原因筛选（模糊搜索，回车/失焦/查询按钮均会提交） */}
               <div className="flex flex-col gap-1 col-span-2">
                 <label className="text-xs text-gray-500 dark:text-gray-400">禁用原因</label>
@@ -2220,7 +2262,7 @@ export function Accounts() {
               <button
                 type="button"
                 onClick={handleResetFilters}
-                disabled={!hasActiveFilters && !accountIdInput && !disableReasonInput}
+                disabled={!hasActiveFilters && !accountIdInput && !disableReasonInput && !ownerUsernameInput}
                 className="btn-ios-secondary btn-sm disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 重置

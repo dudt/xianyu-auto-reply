@@ -16,6 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from common.services.account_limit_service import AccountLimitService
 from common.models.xy_account import XYAccount
+from common.models.user import User
 from common.utils.cookie_refresh import clear_cookie_refresh_snapshot
 
 # UTC时区常量
@@ -82,6 +83,7 @@ class AccountService:
         account_id: str | None = None,
         online: bool | None = None,
         online_account_ids: list[str] | None = None,
+        owner_username: str | None = None,
     ) -> tuple[list[XYAccount], int]:
         """获取账号列表（分页），支持多条件筛选
         
@@ -175,6 +177,17 @@ class AccountService:
             account_id_keyword = account_id.strip()
             if account_id_keyword:
                 conditions.append(XYAccount.account_id.ilike(f"%{account_id_keyword}%"))
+
+        # 所属用户名模糊搜索（管理员按账号归属用户筛选）：
+        # 账号表无用户名字段，故通过子查询匹配 users.username，再以 owner_id IN (...) 过滤。
+        # ilike 自动参数化避免 SQL 注入；普通用户已被上方 owner_id 作用域限制，故此条件不影响数据隔离。
+        if owner_username is not None:
+            owner_username_keyword = owner_username.strip()
+            if owner_username_keyword:
+                owner_ids_subq = select(User.id).where(
+                    User.username.ilike(f"%{owner_username_keyword}%")
+                )
+                conditions.append(XYAccount.owner_id.in_(owner_ids_subq))
 
         # 在线状态筛选：在线集合来自 websocket 实时连接（不在库内），
         # 故以 account_id IN / NOT IN 在线集合 的方式参与 SQL 条件，保证分页正确。

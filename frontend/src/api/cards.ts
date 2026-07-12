@@ -83,6 +83,56 @@ export const getCard = (cardId: number): Promise<CardData> => {
   return get<CardData>(`${CARD_PREFIX}/${cardId}`)
 }
 
+// 商品关联卡券选择弹窗：可选卡券项（自有 + 对接 合并后的轻字段）
+export interface SelectableCard {
+  id?: number
+  name: string
+  type: string
+  source: 'own' | 'dock_l1' | 'dock_l2'
+  dock_name?: string | null
+  dock_record_id?: number | null
+  is_multi_spec?: boolean
+  spec_name?: string
+  spec_value?: string
+  enabled?: boolean
+  price?: string | null
+  unique_key: string
+}
+
+// 可选卡券分页响应
+export interface SelectablePaginatedResult {
+  list: SelectableCard[]
+  total: number
+  page: number
+  page_size: number
+  total_pages: number
+}
+
+// 合并分页获取商品可选卡券（自有 + 对接，服务端分页与搜索）
+export const getSelectableCards = (
+  itemId: string,
+  page: number,
+  pageSize: number,
+  search: string = '',
+): Promise<SelectablePaginatedResult> => {
+  const q = new URLSearchParams()
+  q.set('item_id', itemId)
+  q.set('page', String(page))
+  q.set('page_size', String(pageSize))
+  if (search) q.set('search', search)
+  return get<SelectablePaginatedResult>(`${CARD_PREFIX}/selectable?${q.toString()}`)
+}
+
+// 获取全部匹配的可选卡券轻量项（供「全选当前筛选结果」）
+export const getAllSelectableCardKeys = (
+  search: string = '',
+): Promise<{ list: SelectableCard[]; total: number }> => {
+  const q = new URLSearchParams()
+  if (search) q.set('search', search)
+  const qs = q.toString()
+  return get(`${CARD_PREFIX}/selectable/all${qs ? `?${qs}` : ''}`)
+}
+
 // 按商品ID获取卡券列表
 export const getCardsByItemId = async (itemId: string): Promise<{ success: boolean; data?: CardData[] }> => {
   const result = await get<CardData[]>(`${CARD_PREFIX}/item/${itemId}`)
